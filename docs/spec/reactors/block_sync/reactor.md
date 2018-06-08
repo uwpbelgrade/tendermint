@@ -49,6 +49,8 @@ NOTE: why we use prefix bc for those messages?
 
 Blockchain reactor consists of several parallel tasks (routines):...
 
+### Pool data structure and peer data structure
+TODO
 
 ### Receive routine of Blockchain Reactor
 
@@ -115,7 +117,44 @@ onTimeout(peer):
 
 ```
 
+### Task for creating Requestors
 
+This task is responsible for continously creating Requestors where each Requestor is a task that is 
+responsible for fetching a single block.   
+
+```go
+creteRequestors(pool, p):
+    if pool.numPending >= maxPendingRequests or size(pool.requesters) >= maxTotalRequesters then
+                sleep for requestIntervalMS
+                pool.mtx.Lock()
+                for each peer in pool.peers do
+                    if !peer.didTimeout && peer.numPending > 0 && peer.curRate < minRecvRate then
+                        send error on pool error channel
+                        peer.didTimeout = true
+    
+                    if peer.didTimeout then
+                        for each requester in pool.requesters do
+                        if requester.getPeerID() == p then
+                            requester.redo()
+    
+                        delete(pool.peers, peerID)
+    
+                pool.mtx.Unlock()
+            else
+                pool.mtx.Lock()
+                nextHeight = pool.height + size(pool.requesters)
+                requestor = create new requestor for height nextHeight
+    
+                pool.requesters[nextHeight] = requestor
+                pool.numPending += 1 // atomic increment
+                start requestor task
+                pool.mtx.Unlock()
+```
+  
+### Main blockchain controllor task 
+
+ 
+                
 ## Channels
 
 Defines `maxMsgSize` for the maximum size of incoming messages,
